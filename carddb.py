@@ -8,6 +8,7 @@ import numpy as np
 # refactor to use this method
 # Move these to a tools lib??
 # Expand on for new libs
+# compile all sheets does not work
 class CardDB(object):
     """
     Deck list or card library class
@@ -79,7 +80,7 @@ class CardDB(object):
         def _parse_sheet_name(sheet_name_, loc_):
             if loc_ is not None:
                 if parser is 'read_excel':
-                    kwargs['sheetname'] = loc_
+                    kwargs['sheet_name'] = loc_
                 sheet = parser_handle(self.filename, **kwargs)
                 # Handle primary differently
                 if sheet_name_ is 'primary_sheet':
@@ -100,8 +101,8 @@ class CardDB(object):
         # kwargs
         self.filename = filename
         parser_handle = getattr(pd, parser)
-        if 'sheetname' in kwargs.keys():
-            primary_sheet = kwargs.pop('sheetname')
+        if 'sheet_name' in kwargs.keys():
+            primary_sheet = kwargs.pop('sheet_name')
         if parser is 'read_excel':
             file_sheet_names = pd.ExcelFile(filename).sheet_names
             self.ExcelFileIO = pd.ExcelFile(filename)
@@ -244,7 +245,7 @@ class CardDB(object):
                    sheet_name,
                    data_frame,
                    key_field='Name',
-                   secondary_key_field='Quantity',
+                   secondary_key_field='Count',
                    keep_old_lib=False):
         """
         Similar to replace_lib but updates change log with differences between
@@ -287,6 +288,7 @@ class CardDB(object):
 
         for card in in_cards:
             self._update_change_log(card_in=card, location=sheet_name)
+        return getattr(self, sheet_name)
 
 
     def delete_lib(self, sheet_name):
@@ -509,12 +511,14 @@ class CardDB(object):
                 iformat += 1
         formatted_deck.pop(expand_on)
         if keep_expanded_col:
-            formatted_deck = self._add_sheet_field(formatted_deck, expand_on)
+            formatted_deck = self._add_sheet_field(formatted_deck,
+                                                   expand_on,
+                                                   val=1)
         return formatted_deck
 
     # TODO -- Move these to a tools lib??
     @staticmethod
-    def _add_sheet_field(old_df, field_name):
+    def _add_sheet_field(old_df, field_name, val=np.nan):
         """
         Add a new column to a given sheet_name
 
@@ -523,7 +527,7 @@ class CardDB(object):
                 sheet_name
         :return: pd.df with added field
         """
-        return old_df.assign(**{field_name: [np.nan] * len(old_df)})
+        return old_df.assign(**{field_name: [val] * len(old_df)})
 
     @staticmethod
     def _connect_dfs(prime_df, secondary_df):
